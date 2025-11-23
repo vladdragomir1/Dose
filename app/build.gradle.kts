@@ -70,4 +70,5 @@ dependencies {
 
     implementation("com.google.mlkit:image-labeling:17.0.7")
     implementation("androidx.biometric:biometric:1.2.0-alpha05")
+    implementation("androidx.activity:activity-compose:1.10.0-alpha01")
 }

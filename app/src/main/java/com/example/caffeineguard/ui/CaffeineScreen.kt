@@ -168,8 +168,11 @@ fun CaffeineScreen(
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicturePreview()
     ) { bitmap ->
+        // FIX: Check if bitmap is null BEFORE using it
         if (bitmap != null) {
             analyzeImage(bitmap)
+        } else {
+            Toast.makeText(context, "Photo capture failed or cancelled", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -178,14 +181,19 @@ fun CaffeineScreen(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
-            // FIX: Wrap the launch in a try-catch to prevent crashing
             try {
-                cameraLauncher.launch()
+                // FIX: Add a log here to prove we reached this step
+                android.util.Log.d("CAMERA_DEBUG", "Permission granted, launching camera...")
+                cameraLauncher.launch(null)
             } catch (e: Exception) {
-                Toast.makeText(context, "No camera app found on this device", Toast.LENGTH_SHORT).show()
+                // This prints the REAL error in red in the "Logcat" tab
+                android.util.Log.e("CAMERA_ERROR", "Crash launching camera", e)
+                Toast.makeText(context, "Error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
             }
         } else {
-            Toast.makeText(context, "Camera permission required to scan drinks", Toast.LENGTH_SHORT).show()
+            // Log this too
+            android.util.Log.e("CAMERA_ERROR", "Permission was DENIED by user or system")
+            Toast.makeText(context, "Permission Denied: Go to Settings to enable", Toast.LENGTH_SHORT).show()
         }
     }
     // --- CAMERA & ML LOGIC END ---
