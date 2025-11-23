@@ -179,13 +179,14 @@ fun SettingsScreen(
         // LOG OUT DIALOG
         if (showLogoutDialog) {
             AlertDialog(
-                onDismissRequest = { },
+                onDismissRequest = { showLogoutDialog = false },
                 containerColor = Color(0xFF2D2D3A),
                 title = { Text("Log Out", color = Color.White) },
                 text = { Text("Are you sure you want to Log Out?", color = Color.LightGray) },
                 confirmButton = {
                     Button(
                         onClick = {
+                            showLogoutDialog = false
                             onLogOut()        // <-- Just call the callback
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = NeonPurple)
@@ -194,7 +195,7 @@ fun SettingsScreen(
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { }) {
+                    TextButton(onClick = { showLogoutDialog = false }) {
                         Text("Cancel", color = Color.Gray)
                     }
                 }
@@ -204,7 +205,7 @@ fun SettingsScreen(
         // DELETE ACCOUNT DIALOG
         if (showDeleteDialog) {
             AlertDialog(
-                onDismissRequest = { },
+                onDismissRequest = { showDeleteDialog = false },
                 containerColor = Color(0xFF2D2D3A),
                 title = {
                     Text(
@@ -217,6 +218,7 @@ fun SettingsScreen(
                 confirmButton = {
                     Button(
                         onClick = {
+                            showDeleteDialog = false
                             onDeleteAccount()   // <-- Just call the callback
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF5252))
@@ -225,7 +227,7 @@ fun SettingsScreen(
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { }) {
+                    TextButton(onClick = { showDeleteDialog = false }) {
                         Text("Cancel", color = Color.Gray)
                     }
                 }
