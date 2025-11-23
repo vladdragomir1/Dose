@@ -51,6 +51,8 @@ import com.google.mlkit.vision.label.defaults.ImageLabelerOptions
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.math.ln
+import kotlin.math.pow
 
 // --- CUSTOM PREMIUM COLORS ---
 val DarkPurple = Color(0xFF120E1F)
@@ -182,7 +184,6 @@ fun CaffeineScreen(
     ) { isGranted ->
         if (isGranted) {
             try {
-                // FIX: Add a log here to prove we reached this step
                 android.util.Log.d("CAMERA_DEBUG", "Permission granted, launching camera...")
                 cameraLauncher.launch(null)
             } catch (e: Exception) {
@@ -196,10 +197,14 @@ fun CaffeineScreen(
             Toast.makeText(context, "Permission Denied: Go to Settings to enable", Toast.LENGTH_SHORT).show()
         }
     }
-    // --- CAMERA & ML LOGIC END ---
-
+    //HALF-LINE DECAY ALGORITHM LOGIC
     // --- LOGIC FOR CHARTS & STATUS ---
-    val currentLevel = drinks.sumOf { it.caffeineMg }
+    val currentLevel = drinks.sumOf { drink ->
+        val hoursPassed = (System.currentTimeMillis() - drink.timeAdded) / (1000f * 60 * 60)
+        // Formula: InitialAmount * (0.5)^(hours/5)
+        val remaining = drink.caffeineMg * 0.5.pow(hoursPassed.toDouble() / 5.0)
+        if (remaining < 1) 0.0 else remaining
+    }.toInt()
     val maxLimit = 400f
     val targetProgress = (currentLevel / maxLimit).coerceIn(0f, 1f)
     val animatedProgress by animateFloatAsState(
@@ -208,42 +213,49 @@ fun CaffeineScreen(
         label = "ProgressAnimation"
     )
 
-    // Sleep Calculation
-    val hoursToSleep = if (currentLevel > 50) (currentLevel - 50) / 20 else 0
-    val now = Calendar.getInstance()
-    val sleepCalendar = Calendar.getInstance()
-    sleepCalendar.add(Calendar.HOUR_OF_DAY, hoursToSleep)
-    val currentDay = now.get(Calendar.DAY_OF_YEAR)
-    val sleepDay = sleepCalendar.get(Calendar.DAY_OF_YEAR)
-    val currentYear = now.get(Calendar.YEAR)
-    val sleepYear = sleepCalendar.get(Calendar.YEAR)
-    val dayDifference = (sleepDay - currentDay) + ((sleepYear - currentYear) * 365)
+    val sleepThreshold = 50.0 // Target: 50mg to sleep
     val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
-    val sleepTimeHour = timeFormat.format(sleepCalendar.time)
-    val sleepDisplayText = when {
-        currentLevel <= 50 -> "Sleep anytime"
-        dayDifference <= 0 -> "Today at $sleepTimeHour"
-        dayDifference == 1 -> "Tomorrow at $sleepTimeHour"
-        else -> "In $dayDifference days at $sleepTimeHour"
+    val sleepDisplayText = if (currentLevel <= sleepThreshold) {
+        "Sleep anytime"
+    } else {
+        val ratio = sleepThreshold / currentLevel.toDouble()
+        val hoursUntilSleep = 5.0 * (kotlin.math.ln(ratio) / kotlin.math.ln(0.5))
+        val now = Calendar.getInstance()
+        val sleepCalendar = Calendar.getInstance()
+        sleepCalendar.add(Calendar.MINUTE, (hoursUntilSleep * 60).toInt())
+        val currentDay = now.get(Calendar.DAY_OF_YEAR)
+        val sleepDay = sleepCalendar.get(Calendar.DAY_OF_YEAR)
+        val currentYear = now.get(Calendar.YEAR)
+        val sleepYear = sleepCalendar.get(Calendar.YEAR)
+        val dayDifference = (sleepDay - currentDay) + ((sleepYear - currentYear) * 365)
+        val sleepTimeHour = timeFormat.format(sleepCalendar.time)
+        when {
+            dayDifference <= 0 -> "Today at $sleepTimeHour"
+            dayDifference == 1 -> "Tomorrow at $sleepTimeHour"
+            else -> "In $dayDifference days at $sleepTimeHour"
+        }
     }
 
     // Crash Prediction Logic
-    val lastDrink = drinks.maxByOrNull { it.timeAdded }
-    val crashCalendar = lastDrink?.let {
-        Calendar.getInstance().apply {
-            timeInMillis = it.timeAdded
-            add(Calendar.HOUR_OF_DAY, 4)
-        }
-    }
-    val crashTimeText = crashCalendar?.let { timeFormat.format(it.time) }
-    val nowCal = Calendar.getInstance()
-    val isCrashInFuture = crashCalendar != null && crashCalendar.after(nowCal)
-    val isCrashLikely = isCrashInFuture && currentLevel > 30
     val (statusText, statusColor) = when {
         currentLevel > 400 -> "⚠️ DANGER ZONE" to Color(0xFFFF5252)
         currentLevel > 250 -> "⚡ HIGH ENERGY" to Color(0xFFFFAB40)
         currentLevel > 100 -> "✅ PRODUCTIVE" to Color(0xFF69F0AE)
         else -> "💤 RELAXED" to Color(0xFFE0E0E0)
+    }
+    val crashThreshold = 60.0
+
+    val (isCrashLikely, crashTimeText) = if (currentLevel > crashThreshold) {
+        val ratio = crashThreshold / currentLevel.toDouble()
+        // Calculate hours remaining until we hit 60mg
+        val hoursUntilCrash = 5.0 * (ln(ratio) / ln(0.5))
+        // Add those hours to current time
+        val crashCal = Calendar.getInstance()
+        crashCal.add(Calendar.MINUTE, (hoursUntilCrash * 60).toInt())
+        true to timeFormat.format(crashCal.time)
+    } else {
+        // If you are currently below 60mg, you are already at baseline. No crash coming.
+        false to null
     }
 
     // --- UI LAYOUT ---
@@ -402,10 +414,11 @@ fun CaffeineScreen(
                             Card(
                                 onClick = {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    // Smart notification message
                                     val msg = if (isCrashLikely && crashTimeText != null) {
-                                        "Energy crash expected around $crashTimeText"
+                                        "Your caffeine levels will drop to baseline around $crashTimeText"
                                     } else {
-                                        "Energy levels are stable."
+                                        "Energy levels are stable. No crash predicted."
                                     }
                                     sendNotification(context, "Energy Forecast", msg)
                                 },
@@ -417,10 +430,8 @@ fun CaffeineScreen(
                                     modifier = Modifier.padding(16.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    val cardIcon =
-                                        if (isCrashLikely) Icons.Default.BatteryAlert else Icons.Default.BatteryFull
-                                    val iconColor =
-                                        if (isCrashLikely) EnergyOrange else EnergyGreen
+                                    val cardIcon = if (isCrashLikely) Icons.Default.BatteryAlert else Icons.Default.BatteryFull
+                                    val iconColor = if (isCrashLikely) EnergyOrange else EnergyGreen
 
                                     Box(
                                         modifier = Modifier
@@ -437,6 +448,8 @@ fun CaffeineScreen(
                                             style = MaterialTheme.typography.labelSmall,
                                             color = Color.Gray
                                         )
+
+                                        // Display different text based on the math result
                                         if (isCrashLikely && crashTimeText != null) {
                                             Text(
                                                 "Expect a crash around:",
