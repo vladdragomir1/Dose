@@ -122,7 +122,12 @@ fun SignUpScreen(
                     val cleanPassword = password.trim()
 
                     if (cleanUsername.isEmpty() || cleanPassword.isEmpty()) {
-                        errorMessage = "Please fill in both fields"
+                        errorMessage = "Please fill in both fields."
+                        return@Button
+                    }
+
+                    if (cleanPassword.length < 4) {
+                        errorMessage = "Minimum 4 characters required for password."
                         return@Button
                     }
 
