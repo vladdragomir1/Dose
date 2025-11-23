@@ -62,13 +62,12 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
     // DEPENDINTE PENTRU ROOM DATABASE
-    val room_version = "2.6.1"
-    implementation("androidx.room:room-runtime:$room_version")
-    implementation("androidx.room:room-ktx:$room_version")
-    kapt("androidx.room:room-compiler:$room_version")
-    implementation("androidx.security:security-crypto:1.1.0")
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    kapt(libs.androidx.room.compiler)
+    implementation(libs.androidx.security.crypto)
 
-    implementation("com.google.mlkit:image-labeling:17.0.7")
-    implementation("androidx.biometric:biometric:1.2.0-alpha05")
-    implementation("androidx.activity:activity-compose:1.10.0-alpha01")
+    implementation(libs.image.labeling)
+    implementation(libs.androidx.biometric)
+    implementation(libs.androidx.activity.compose.v1100alpha01)
 }

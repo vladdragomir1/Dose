@@ -38,9 +38,9 @@ fun WelcomeBackScreen(
     val context = LocalContext.current
     val sessionManager = remember { SessionManager(context) }
 
-    val DarkPurple = Color(0xFF120E1F)
-    val NeonPurple = Color(0xFFBB86FC)
-    val SurfaceGlass = Color(0xFF2D2D3A).copy(alpha = 0.7f)
+    Color(0xFF120E1F)
+    Color(0xFFBB86FC)
+    Color(0xFF2D2D3A).copy(alpha = 0.7f)
 
     Box(
         modifier = Modifier
